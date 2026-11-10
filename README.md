@@ -19,7 +19,7 @@ This is an old version
 
 Linoria maked to mspaint teams.
 
-> https://mspaint
+> https://mspaint.cc
 
 # Repos
 ```lua
