@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Library Demo — Interactive</title>
+<style>
+  :root {
+    --font-color: #ffffff;
+    --main:       #1c1c1c;
+    --background: #141414;
+    --outline:    #323232;
+    --accent:     #3ba7ff;
+    --accent-dark:#276f9e;
+    --risk:       #ff3232;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden;
+    background: #08080c radial-gradient(circle at 50% 25%, #191a24 0%, #060608 70%);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: var(--font-color);
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #0a0a0a; }
+  ::-webkit-scrollbar-thumb { background: var(--accent); }
+
+  #overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+  #overlay > * { pointer-events: auto; }
+
+  .win-outer {
+    position: absolute;
+    left: calc(50vw - 280px); top: 40px;
+    background: #000; padding: 1px;
+    filter: drop-shadow(0 12px 40px rgba(0,0,0,.8));
+    transition: opacity .18s;
+  }
+  .win-inner {
+    width: 560px;
+    background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--accent);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 60px);
+  }
+  .win-title {
+    height: 25px; line-height: 25px;
+    text-align: center; font-size: 12px;
+    letter-spacing: .5px; cursor: move;
+    text-shadow: 0 0 4px #000;
+    flex: none;
+  }
+  .main-section {
+    position: relative; margin: 0 8px 8px;
+    background: var(--background);
+    box-shadow: inset 0 0 0 1px var(--outline), inset 0 0 0 2px #000;
+    padding: 8px;
+    display: flex; flex-direction: column;
+    height: 580px; min-height: 220px;
+  }
+  .tab-area { height: 21px; display: flex; gap: 2px; justify-content: center; flex: none; }
+  .tab-container {
+    flex: 1; margin-top: 1px;
+    background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    overflow: hidden; position: relative;
+  }
+  .tab-btn {
+    height: 21px; padding: 0 9px;
+    background: var(--background);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 12px; position: relative;
+    transition: background .1s;
+  }
+  .tab-btn:hover { background: #1a1a1a; }
+  .tab-btn.active { background: var(--main); }
+  .tab-btn.active::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px;
+    background: var(--main);
+  }
+
+  .tab-frame {
+    display: none; height: 100%; padding: 8px; gap: 8px;
+    overflow-y: auto; overflow-x: hidden;
+  }
+  .tab-frame.active { display: flex; }
+  .col { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+  /* ================= GROUPBOX ================= */
+  .groupbox { background: var(--background); box-shadow: inset 0 0 0 1px var(--outline); padding: 1px; flex: none; }
+  .groupbox-inner { background: var(--background); box-shadow: inset 0 0 0 1px #000; position: relative; padding-top: 20px; }
+  .groupbox-hl { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+  .groupbox-label {
+    position: absolute; top: 2px; left: 5px;
+    font-size: 12px; text-shadow: 0 0 3px #000; opacity: .95;
+  }
+  .groupbox-content { padding: 0 4px 4px; display: flex; flex-direction: column; }
+
+  /* ================= TOGGLE ================= */
+  .row-toggle { display: flex; align-items: center; gap: 6px; height: 15px; cursor: pointer; margin-bottom: 7px; }
+  .toggle-box { width: 13px; height: 13px; background: #000; padding: 1px; flex: none; }
+  .toggle-inner {
+    width: 100%; height: 100%; background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    transition: background .12s, box-shadow .12s;
+  }
+  .row-toggle.on .toggle-inner { background: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-dark); }
+  .toggle-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-toggle.risky .toggle-label { color: var(--risk); }
+  .addons { display: flex; gap: 4px; align-items: center; flex: none; }
+
+  /* ================= SLIDER ================= */
+  .slider { margin-bottom: 8px; }
+  .slider-name { margin-bottom: 3px; }
+  .slider-bar { position: relative; height: 13px; background: #000; padding: 1px; cursor: ew-resize; }
+  .slider-track { position: relative; width: 100%; height: 100%; background: var(--main); box-shadow: inset 0 0 0 1px var(--outline); overflow: hidden; }
+  .slider-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); box-shadow: inset -1px 0 0 var(--accent-dark); }
+  .slider-text {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; pointer-events: none;
+    text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 2px #000;
+  }
+
+  /* ================= BUTTON ================= */
+  .btn { height: 20px; background: #000; padding: 1px; cursor: pointer; margin-bottom: 7px; transition: background .1s; }
+  .btn:hover { background: var(--accent); }
+  .btn-inner {
+    height: 100%; background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    background-image: linear-gradient(to bottom, rgba(255,255,255,.05), rgba(0,0,0,.10));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .btn.danger .btn-inner { color: var(--risk); }
+
+  /* ================= DROPDOWN ================= */
+  .dropdown { position: relative; height: 20px; background: #000; padding: 1px; cursor: pointer; margin-bottom: 8px; transition: background .1s; }
+  .dropdown:hover { background: var(--accent); }
+  .dd-inner {
+    height: 100%; background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    background-image: linear-gradient(to bottom, rgba(255,255,255,.05), rgba(0,0,0,.10));
+    display: flex; align-items: center; padding: 0 18px 0 5px;
+    overflow: hidden; white-space: nowrap;
+  }
+  .dd-arrow { position: absolute; right: 5px; top: 50%; margin-top: -5px; font-size: 9px; transition: transform .15s; }
+  .dropdown.open .dd-arrow { transform: rotate(180deg); }
+
+  /* floating list */
+  .dd-list {
+    position: fixed; background: #000; padding: 1px;
+    display: none; flex-direction: column;
+    max-height: 162px; overflow-y: auto; z-index: 9999;
+  }
+  .dd-list-inner { background: var(--main); box-shadow: inset 0 0 0 1px var(--outline); }
+  .dd-item { height: 20px; display: flex; align-items: center; padding: 0 6px; cursor: pointer; border-bottom: 1px solid var(--outline); }
+  .dd-item:last-child { border-bottom: 0; }
+  .dd-item:hover { color: var(--accent); }
+  .dd-item.selected { color: var(--accent); }
+
+  /* ================= INPUT ================= */
+  .input-wrap { margin-bottom: 8px; }
+  .input-name { margin-bottom: 3px; }
+  .input-box { height: 20px; background: #000; padding: 1px; transition: background .1s; }
+  .input-box:focus-within { background: var(--accent); }
+  .input-inner {
+    height: 100%; background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    background-image: linear-gradient(to bottom, rgba(255,255,255,.05), rgba(0,0,0,.10));
+    display: flex; align-items: center; padding: 0 5px;
+  }
+  .input-inner input {
+    width: 100%; background: transparent; border: 0; outline: 0;
+    color: var(--font-color); font-family: inherit; font-size: 12px;
+    padding: 0; caret-color: var(--accent);
+  }
+  .input-inner input::placeholder { color: #7a7a7a; }
+
+  /* ================= KEYPICKER ================= */
+  .keypicker { width: 28px; height: 15px; background: #000; padding: 1px; cursor: pointer; flex: none; }
+  .kp-inner {
+    height: 100%; background: var(--background);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; letter-spacing: .3px;
+  }
+  .keypicker.picking .kp-inner { color: var(--accent); }
+  .keypicker.active .kp-inner { color: var(--accent); }
+
+  .kp-modes {
+    position: fixed; background: var(--background);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    padding: 1px; display: none; z-index: 9999; min-width: 62px;
+  }
+  .kp-mode { height: 15px; display: flex; align-items: center; padding: 0 4px; cursor: pointer; font-size: 11px; }
+  .kp-mode:hover { color: var(--accent); }
+  .kp-mode.selected { color: var(--accent); }
+
+  /* ================= COLOR PICKER ================= */
+  .swatch { width: 28px; height: 14px; background: #000; padding: 1px; cursor: pointer; flex: none; }
+  .swatch-inner { width: 100%; height: 100%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.55); }
+
+  .checker {
+    background-image:
+      linear-gradient(45deg, #6a6a6a 25%, transparent 25%),
+      linear-gradient(-45deg, #6a6a6a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #6a6a6a 75%),
+      linear-gradient(-45deg, transparent 75%, #6a6a6a 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    background-color: #9c9c9c;
+  }
+
+  .cp-popup { position: fixed; width: 230px; background: #fff; padding: 1px; display: none; z-index: 9999; }
+  .cp-inner {
+    position: relative; height: 271px;
+    background: var(--background);
+    box-shadow: inset 0 0 0 1px var(--outline);
+  }
+  .cp-hl { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+  .cp-title { position: absolute; top: 5px; left: 5px; font-size: 12px; text-shadow: 0 0 3px #000; }
+  .cp-map {
+    position: absolute; top: 25px; left: 4px; width: 200px; height: 200px;
+    background-image: linear-gradient(to top, #000, rgba(0,0,0,0)),
+                      linear-gradient(to right, #fff, hsl(0,100%,50%));
+    cursor: crosshair;
+  }
+  .cp-map-cursor {
+    position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px #000;
+    pointer-events: none;
+  }
+  .cp-hue {
+    position: absolute; top: 25px; left: 208px; width: 15px; height: 200px;
+    background: linear-gradient(to bottom,
+      #f00 0%, #ff0 16.66%, #0f0 33.33%, #0ff 50%, #00f 66.66%, #f0f 83.33%, #f00 100%);
+    cursor: ns-resize;
+  }
+  .cp-hue-cursor {
+    position: absolute; left: -1px; right: -1px; height: 1px; margin-top: -0.5px;
+    background: #fff; box-shadow: 0 0 0 1px #000; pointer-events: none;
+  }
+  .cp-box { position: absolute; height: 20px; background: #000; padding: 1px; }
+  .cp-box-inner {
+    height: 100%; background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    background-image: linear-gradient(to bottom, rgba(255,255,255,.06), rgba(0,0,0,.14));
+    display: flex; align-items: center; padding: 0 5px;
+  }
+  .cp-box-inner input {
+    width: 100%; background: transparent; border: 0; outline: 0;
+    color: var(--font-color); font-family: inherit; font-size: 12px; padding: 0;
+  }
+  .cp-alpha { position: absolute; top: 251px; left: 4px; right: 4px; height: 15px; background: #000; padding: 1px; cursor: ew-resize; }
+  .cp-alpha-inner { position: relative; height: 100%; box-shadow: inset 0 0 0 1px var(--outline); overflow: hidden; }
+  .cp-alpha-fill { position: absolute; inset: 0; }
+  .cp-alpha-cursor {
+    position: absolute; top: 0; bottom: 0; width: 1px; background: #fff;
+    box-shadow: 0 0 0 1px #000; pointer-events: none;
+  }
+
+  /* ================= MISC ================= */
+  .divider { height: 5px; background: #000; padding: 1px; margin-bottom: 7px; }
+  .divider-inner { height: 100%; background: var(--main); box-shadow: inset 0 0 0 1px var(--outline); }
+  .lbl { font-size: 12px; margin-bottom: 6px; text-shadow: 0 0 3px #000; }
+  .lbl.wrap { white-space: normal; line-height: 1.35; }
+  .blank { flex: none; }
+
+  .tooltip {
+    position: fixed; background: var(--main);
+    box-shadow: inset 0 0 0 1px var(--outline);
+    padding: 2px 5px; font-size: 11px; white-space: nowrap;
+    pointer-events: none; z-index: 10000; display: none;
+  }
+
+  /* ================= NOTIFY ================= */
+  #notify-area {
+    position: fixed; left: 12px; top: 42px;
+    display: flex; flex-direction: column; gap: 4px;
+    z-index: 9998; pointer-events: none;
+  }
+  .notify {
+    background: var(--main); box-shadow: inset 0 0 0 1px var(--outline);
+    height: 26px; overflow: hidden; width: 0; transition: width .35s cubic-bezier(.22,.9,.3,1);
+    position: relative; display: flex; align-items: center;
+  }
+  .notify-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+  .notify-text {
+    padding-left: 10px; padding-right: 8px; font-size: 12px; white-space: nowrap;
+    text-shadow: 0 0 3px #000;
+  }
+
+  /* ================= WATERMARK ================= */
+  .watermark {
+    position: fixed; left: 120px; top: 14px;
+    background: #000; padding: 1px; cursor: move; display: none; z-index: 9997;
+  }
+  .watermark-inner {
+    background: var(--main); box-shadow: inset 0 0 0 1px var(--accent);
+    padding: 2px 6px; font-size: 12px; white-space: nowrap;
+    background-image: linear-gradient(to bottom, rgba(255,255,255,.05), rgba(0,0,0,.18));
+  }
+
+  /* ================= KEYBIND PANEL ================= */
+  #keybind-panel {
+    position: fixed; left: 12px; top: 50%; transform: translateY(-50%);
+    width: 210px; background: #000; padding: 1px; display: none; z-index: 9996;
+  }
+  .kb-inner { background: var(--main); box-shadow: inset 0 0 0 1px var(--outline); position: relative; padding-top: 22px; }
+  .kb-hl { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+  .kb-title { position: absolute; top: 4px; left: 5px; font-size: 12px; text-shadow: 0 0 3px #000; }
+  .kb-list { padding: 0 5px 4px; display: flex; flex-direction: column; gap: 2px; }
+  .kb-item { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kb-item.active { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="overlay"></div>
+<div id="notify-area"></div>
+<div class="tooltip" id="tooltip"></div>
+
+<div class="watermark" id="watermark">
+  <div class="watermark-inner" id="watermark-text">Watermark</div>
+</div>
+
+<div id="keybind-panel">
+  <div class="kb-inner">
+    <div class="kb-hl"></div>
+    <div class="kb-title">Keybinds</div>
+    <div class="kb-list" id="kb-list"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   Library  (Lua版の API をそのまま JS に移植したもの)
+   ========================================================================= */
+const Library = (function () {
+  'use strict';
+
+  const App       = document.getElementById('app');
+  const Overlay   = document.getElementById('overlay');
+  const NotifyArea= document.getElementById('notify-area');
+  const TooltipEl = document.getElementById('tooltip');
+  const WatermarkEl = document.getElementById('watermark');
+  const WatermarkText = document.getElementById('watermark-text');
+  const KeybindPanel = document.getElementById('keybind-panel');
+  const KeybindList  = document.getElementById('kb-list');
+
+  /* ---------- 公開ストア ---------- */
+  const Toggles = {};
+  const Options = {};
+
+  /* ---------- 内部状態 ---------- */
+  const keyPickers      = [];
+  const dependencyBoxes = [];
+  const pressedKeys     = new Set();
+  const colorPickers    = [];
+
+  let activeDropdown   = null;
+  let activeColorPicker= null;
+  let activeKeyPicker  = null;   // キー入力待ち
+  let activeModeMenu   = null;
+  let shownKeybindPanel= false;
+  let menuVisible      = true;
+
+  /* ================= utilities ================= */
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  function h(tag, cls, parent) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  function measureText(text) {
+    const d = document.createElement('span');
+    d.style.cssText =
+      'position:absolute;visibility:hidden;white-space:pre;' +
+      'font:12px Consolas,"Courier New",monospace;';
+    d.textContent = text;
+    document.body.appendChild(d);
+    const w = d.getBoundingClientRect().width;
+    d.remove();
+    return w;
+  }
+
+  /* ---------- color math ---------- */
+  function hsvToRgb(h, s, v) {
+    const i = Math.floor(h * 6), f = h * 6 - i;
+    const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+    let r, g, b;
+    switch (i % 6) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      default:r = v; g = p; b = q; break;
+    }
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+  }
+  function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    let hue = 0;
+    if (d !== 0) {
+      if (max === r) hue = ((g - b) / d) % 6;
+      else if (max === g) hue = (b - r) / d + 2;
+      else hue = (r - g) / d + 4;
+      hue *= 60;
+      if (hue < 0) hue += 360;
+    }
+    return { h: hue / 360, s: max === 0 ? 0 : d / max, v: max };
+  }
+  const toHex = (r, g, b) =>
+    '#' + [r, g, b].map(x => clamp(x, 0, 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+
+  function hexToRgb(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function rgbToHslCss(r, g, b) {
+    const { h, s, v } = rgbToHsv(r, g, b);
+    return `hsl(${h * 360}, ${s * 100}%, ${v * 50}%)`;
+  }
+
+  /* ---------- tooltip ---------- */
+  function attachTooltip(text, target) {
+    if (!text) return;
+    target.addEventListener('mouseenter', () => {
+      TooltipEl.textContent = text;
+      TooltipEl.style.display = 'block';
+    });
+    target.addEventListener('mousemove', e => {
+      TooltipEl.style.left = (e.clientX + 15) + 'px';
+      TooltipEl.style.top  = (e.clientY + 12) + 'px';
+    });
+    target.addEventListener('mouseleave', () => { TooltipEl.style.display = 'none'; });
+  }
+
+  /* ---------- drag helper ---------- */
+  function startDrag(e, onMove) {
+    e.preventDefault();
+    const move = ev => onMove(ev);
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    onMove(e);
+  }
+
+  /* ================= notification ================= */
+  function notify(text, time) {
+    const n = h('div', 'notify', NotifyArea);
+    h('div', 'notify-bar', n);
+    const t = h('div', 'notify-text', n);
+    t.textContent = text;
+
+    const w = measureText(text) + 20;
+    requestAnimationFrame(() => { n.style.width = w + 'px'; });
+
+    setTimeout(() => {
+      n.style.width = '0px';
+      setTimeout(() => n.remove(), 400);
+    }, (time || 5) * 1000);
+  }
+
+  /* ================= watermark ================= */
+  function setWatermark(text) {
+    WatermarkText.textContent = text;
+    WatermarkEl.style.display = 'block';
+  }
+  function setWatermarkVisible(b) { WatermarkEl.style.display = b ? 'block' : 'none'; }
+
+  /* ================= keybind panel ================= */
+  function refreshKeybindPanel() {
+    KeybindList.innerHTML = '';
+    let any = false;
+    for (const kp of keyPickers) {
+      if (kp.info.noUI) continue;
+      any = true;
+      const item = h('div', 'kb-item', KeybindList);
+      item.textContent = `[${kp.value}] ${kp.info.text} (${kp.mode})`;
+      if (kp.getState()) item.classList.add('active');
+    }
+    if (!any) {
+      const item = h('div', 'kb-item', KeybindList);
+      item.textContent = '(なし)';
+    }
+  }
+  function setKeybindPanelVisible(b) {
+    shownKeybindPanel = b;
+    KeybindPanel.style.display = b ? 'block' : 'none';
+    if (b) refreshKeybindPanel();
+  }
+
+  /* ================= dependency boxes ================= */
+  function updateDependencyBoxes() {
+    for (const d of dependencyBoxes) d.update();
+  }
+
+  /* ================= color picker ================= */
+  function createColorPicker(hostAddons, idx, info) {
+    const cp = {
+      type: 'ColorPicker',
+      title: info.title || 'Color picker',
+      transparency: info.transparency || 0,
+      callback: info.callback || (function () {}),
+      h: 0, s: 0, v: 0,
+    };
+
+    const initial = hexToRgb(info.default || '#FF0000') || { r: 255, g: 0, b: 0 };
+    const hsv0 = rgbToHsv(initial.r, initial.g, initial.b);
+    cp.h = hsv0.h; cp.s = hsv0.s; cp.v = hsv0.v;
+
+    /* --- swatch --- */
+    const swatch = h('div', 'swatch', hostAddons);
+    const swatchInner = h('div', 'swatch-inner', swatch);
+    if (info.transparency !== undefined) swatchInner.classList.add('checker');
+
+    const swatchColor = h('div', '', swatchInner);
+    swatchColor.style.cssText = 'position:absolute;inset:0;';
+
+    /* --- popup --- */
+    const popup = h('div', 'cp-popup', Overlay);
+    const inner = h('div', 'cp-inner', popup);
+    h('div', 'cp-hl', inner);
+    const titleEl = h('div', 'cp-title', inner);
+    titleEl.textContent = cp.title;
+
+    const map = h('div', 'cp-map', inner);
+    const mapCursor = h('div', 'cp-map-cursor', map);
+
+    const hue = h('div', 'cp-hue', inner);
+    const hueCursor = h('div', 'cp-hue-cursor', hue);
+
+    const hexBox = h('div', 'cp-box', inner);
+    hexBox.style.cssText = 'top:228px; left:4px; width:calc(50% - 6px);';
+    const hexInner = h('div', 'cp-box-inner', hexBox);
+    const hexInput = h('input', '', hexInner);
+    hexInput.spellcheck = false;
+
+    const rgbBox = h('div', 'cp-box', inner);
+    rgbBox.style.cssText = 'top:228px; left:calc(50% + 2px); width:calc(50% - 6px);';
+    const rgbInner = h('div', 'cp-box-inner', rgbBox);
+    const rgbInput = h('input', '', rgbInner);
+    rgbInput.spellcheck = false;
+
+    let alphaWrap = null, alphaFill = null, alphaCursor = null;
+    if (info.transparency !== undefined) {
+      alphaWrap = h('div', 'cp-alpha', inner);
+      const ai = h('div', 'cp-alpha-inner checker', alphaWrap);
+      alphaFill = h('div', 'cp-alpha-fill', ai);
+      alphaCursor = h('div', 'cp-alpha-cursor', ai);
+    }
+
+    /* --- display --- */
+    function display(silent) {
+      const rgb = hsvToRgb(cp.h, cp.s, cp.v);
+      const hex = toHex(rgb.r, rgb.g, rgb.b);
+
+      swatchColor.style.background = hex;
+      swatchColor.style.opacity = 1 - cp.transparency;
+
+      map.style.backgroundImage =
+        'linear-gradient(to top, #000, rgba(0,0,0,0)),' +
+        `linear-gradient(to right, #fff, hsl(${cp.h * 360},100%,50%))`;
+
+      mapCursor.style.left = (cp.s * 100) + '%';
+      mapCursor.style.top  = ((1 - cp.v) * 100) + '%';
+      hueCursor.style.top  = (cp.h * 100) + '%';
+
+      if (!hexInput.matches(':focus')) hexInput.value = hex;
+      if (!rgbInput.matches(':focus')) rgbInput.value = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+
+      if (alphaFill) {
+        alphaFill.style.background = hex;
+        alphaCursor.style.left = ((1 - cp.transparency) * 100) + '%';
+      }
+
+      if (!silent) cp.callback({ r: rgb.r, g: rgb.g, b: rgb.b, hex: hex, a: 1 - cp.transparency });
+    }
+
+    /* --- interactions --- */
+    function updateFromMap(e) {
+      const r = map.getBoundingClientRect();
+      cp.s = clamp((e.clientX - r.left) / r.width, 0, 1);
+      cp.v = clamp(1 - (e.clientY - r.top) / r.height, 0, 1);
+      display();
+    }
+    map.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      startDrag(e, updateFromMap);
+    });
+
+    function updateFromHue(e) {
+      const r = hue.getBoundingClientRect();
+      cp.h = clamp((e.clientY - r.top) / r.height, 0, 1);
+      display();
+    }
+    hue.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      startDrag(e, updateFromHue);
+    });
+
+    if (alphaWrap) {
+      function updateFromAlpha(e) {
+        const r = alphaWrap.getBoundingClientRect();
+        cp.transparency = clamp(1 - (e.clientX - r.left) / r.width, 0, 1);
+        display();
+      }
+      alphaWrap.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
+        startDrag(e, updateFromAlpha);
+      });
+    }
+
+    hexInput.addEventListener('keydown', e => { if (e.key === 'Enter') hexInput.blur(); });
+    hexInput.addEventListener('blur', () => {
+      const rgb = hexToRgb(hexInput.value);
+      if (rgb) {
+        const n = rgbToHsv(rgb.r, rgb.g, rgb.b);
+        cp.h = n.h; cp.s = n.s; cp.v = n.v;
+      }
+      display();
+    });
+
+    rgbInput.addEventListener('keydown', e => { if (e.key === 'Enter') rgbInput.blur(); });
+    rgbInput.addEventListener('blur', () => {
+      const m = /(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(rgbInput.value);
+      if (m) {
+        const n = rgbToHsv(+m[1], +m[2], +m[3]);
+        cp.h = n.h; cp.s = n.s; cp.v = n.v;
+      }
+      display();
+    });
+
+    swatch.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      if (activeColorPicker === cp) { hidePicker(); return; }
+      showPicker();
+    });
+
+    function showPicker() {
+      closeDropdown();
+      closeColorPickerAll();
+      const r = swatch.getBoundingClientRect();
+      popup.style.display = 'block';
+      popup.style.left = r.left + 'px';
+      popup.style.top  = (r.bottom + 4) + 'px';
+      // 画面外なら上に
+      const pr = popup.getBoundingClientRect();
+      if (pr.bottom > innerHeight - 8) popup.style.top = Math.max(8, r.top - pr.height - 4) + 'px';
+      if (pr.right > innerWidth - 8) popup.style.left = (innerWidth - pr.width - 8) + 'px';
+      activeColorPicker = cp;
+    }
+    function hidePicker() {
+      popup.style.display = 'none';
+      if (activeColorPicker === cp) activeColorPicker = null;
+    }
+    cp.hide = hidePicker;
+
+    /* --- public API --- */
+    cp.setValueRGB = function (r, g, b, a) {
+      const n = rgbToHsv(r, g, b);
+      cp.h = n.h; cp.s = n.s; cp.v = n.v;
+      if (a !== undefined) cp.transparency = a;
+      display();
+    };
+    cp.getValue = function () {
+      const rgb = hsvToRgb(cp.h, cp.s, cp.v);
+      return { ...rgb, hex: toHex(rgb.r, rgb.g, rgb.b), a: 1 - cp.transparency };
+    };
+    cp.onChanged = function (fn) { cp.callback = fn; fn(cp.getValue()); };
+
+    display(true);
+    Options[idx] = cp;
+    colorPickers.push(cp);
+    return cp;
+  }
+
+  function closeColorPickerAll() {
+    for (const cp of colorPickers) if (cp.hide) cp.hide();
+    activeColorPicker = null;
+  }
+
+  /* ================= key picker ================= */
+  const KEY_DISPLAY = code => {
+    if (code.startsWith('Key'))   return code.slice(3);
+    if (code.startsWith('Digit')) return code.slice(5);
+    if (code === 'Space')  return 'Space';
+    if (code === 'Escape') return 'Esc';
+    return code;
+  };
+
+  function createKeyPicker(ownerToggle, hostAddons, idx, info) {
+    const kp = {
+      type: 'KeyPicker',
+      info: info,
+      value: info.default || 'None',
+      mode: info.syncToggleState ? 'Toggle' : (info.mode || 'Toggle'),
+      toggled: false,
+      syncToggleState: !!info.syncToggleState,
+      callback: info.callback || (function () {}),
+      changedCallback: info.changedCallback || (function () {}),
+      picking: false,
+    };
+
+    const box = h('div', 'keypicker', hostAddons);
+    const kpInner = h('div', 'kp-inner', box);
+    const kpText = h('span', '', kpInner);
+    kpText.textContent = kp.value;
+
+    const modes = info.modes || ['Always', 'Toggle', 'Hold'];
+
+    /* --- mode menu --- */
+    const modeMenu = h('div', 'kp-modes', Overlay);
+    const modeEls = {};
+    for (const m of modes) {
+      const el = h('div', 'kp-mode', modeMenu);
+      el.textContent = m;
+      modeEls[m] = el;
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        kp.mode = m;
+        refreshModes();
+        modeMenu.style.display = 'none';
+        activeModeMenu = null;
+        kp.update();
+      });
+    }
+    function refreshModes() {
+      for (const m of modes) modeEls[m].classList.toggle('selected', m === kp.mode);
+    }
+    refreshModes();
+
+    function showModeMenu() {
+      const r = box.getBoundingClientRect();
+      modeMenu.style.display = 'block';
+      modeMenu.style.left = (r.right + 4) + 'px';
+      modeMenu.style.top  = r.top + 'px';
+      activeModeMenu = modeMenu;
+    }
+
+    /* --- picking --- */
+    let dotsTimer = null;
+    function startPicking() {
+      if (kp.picking) return;
+      kp.picking = true;
+      activeKeyPicker = kp;
+      box.classList.add('picking');
+      let n = 0;
+      dotsTimer = setInterval(() => {
+        n = (n + 1) % 4;
+        kpText.textContent = '.'.repeat(n);
+      }, 200);
+    }
+    function stopPicking() {
+      kp.picking = false;
+      if (activeKeyPicker === kp) activeKeyPicker = null;
+      box.classList.remove('picking');
+      clearInterval(dotsTimer);
+      dotsTimer = null;
+    }
+    function bindKey(displayName) {
+      stopPicking();
+      kp.value = displayName;
+      kpText.textContent = displayName;
+      kp.changedCallback(displayName);
+      kp.update();
+    }
+
+    box.addEventListener('pointerdown', e => {
+      if (e.button === 2) return;
+      e.stopPropagation();
+      closeDropdown();
+      closeColorPickerAll();
+      startPicking();
+    });
+    box.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (modeMenu.style.display === 'block') {
+        modeMenu.style.display = 'none'; activeModeMenu = null;
+      } else {
+        showModeMenu();
+      }
+    });
+
+    /* --- API --- */
+    kp.getState = function () {
+      if (kp.mode === 'Always') return true;
+      if (kp.mode === 'Hold') {
+        if (kp.value === 'None') return false;
+        return pressedKeys.has(kp.value);
+      }
+      return kp.toggled;
+    };
+
+    kp.doClick = function () {
+      if (ownerToggle && ownerToggle.type === 'Toggle' && kp.syncToggleState) {
+        ownerToggle.setValue(!ownerToggle.value);
+      }
+      kp.callback(kp.toggled);
+    };
+
+    kp.update = function () {
+      if (kp.info.noUI) return;
+      kpText.textContent = kp.picking ? kpText.textContent : kp.value;
+      box.classList.toggle('active', !!kp.getState());
+      if (shownKeybindPanel) refreshKeybindPanel();
+    };
+
+    kp.onKeyDown = function (name) {
+      if (kp.picking) return;
+      if (kp.mode === 'Toggle' && kp.value === name) {
+        kp.toggled = !kp.toggled;
+        kp.doClick();
+      }
+    };
+
+    kp.setValue = function (key, mode) {
+      kp.value = key;
+      kpText.textContent = key;
+      if (mode) { kp.mode = mode; refreshModes(); }
+      kp.update();
+    };
+
+    keyPickers.push(kp);
+    if (shownKeybindPanel) refreshKeybindPanel();
+    return kp;
+  }
+
+  /* ================= dropdown ================= */
+  function closeDropdown() {
+    if (activeDropdown) {
+      activeDropdown.list.style.display = 'none';
+      activeDropdown.el.classList.remove('open');
+      activeDropdown = null;
+    }
+  }
+
+  function createDropdown(container, idx, info) {
+    if (info.specialType === 'Player') {
+      info.values = Array.from(document.querySelectorAll('x')).length ? [] : ['Player1', 'Player2'];
+    }
+
+    const dd = {
+      type: 'Dropdown',
+      values: info.values || [],
+      value: info.multi ? {} : (info.default || null),
+      multi: !!info.multi,
+      callback: info.callback || (function () {}),
+    };
+
+    const el = h('div', 'dropdown', container);
+    const innerEl = h('div', 'dd-inner', el);
+    const textEl = h('span', '', innerEl);
+    const arrow = h('div', 'dd-arrow', el);
+    arrow.textContent = '▼';
+
+    const list = h('div', 'dd-list', Overlay);
+    const listInner = h('div', 'dd-list-inner', list);
+
+    function display() {
+      let str;
+      if (dd.multi) {
+        const arr = Object.keys(dd.value);
+        str = arr.join(', ');
+      } else {
+        str = dd.value || '';
+      }
+      textEl.textContent = (str === '' ? '--' : str);
+    }
+
+    function build() {
+      listInner.innerHTML = '';
+      for (const v of dd.values) {
+        const item = h('div', 'dd-item', listInner);
+        item.textContent = v;
+        const selected = dd.multi ? !!dd.value[v] : dd.value === v;
+        item.classList.toggle('selected', selected);
+
+        item.addEventListener('pointerdown', e => {
+          e.stopPropagation();
+          const tryState = !selected;
+          if (!dd.multi && dd.getActiveValues() === 1 && !tryState && !info.allowNull) return;
+
+          if (dd.multi) {
+            if (tryState) dd.value[v] = true; else delete dd.value[v];
+          } else {
+            dd.value = tryState ? v : null;
+          }
+          build();
+          display();
+          dd.callback(dd.multi ? Object.keys(dd.value) : dd.value);
+        });
+      }
+    }
+
+    dd.getActiveValues = () => dd.multi ? Object.keys(dd.value).length : (dd.value ? 1 : 0);
+
+    function open() {
+      closeDropdown();
+      closeColorPickerAll();
+      const r = el.getBoundingClientRect();
+      list.style.display = 'flex';
+      list.style.left = r.left + 'px';
+      list.style.top  = (r.bottom + 1) + 'px';
+      list.style.width = r.width + 'px';
+      const lr = list.getBoundingClientRect();
+      if (lr.bottom > innerHeight - 8) {
+        list.style.top = Math.max(8, r.top - lr.height - 1) + 'px';
+      }
+      el.classList.add('open');
+      activeDropdown = { el, list };
+    }
+
+    el.addEventListener('pointerdown', e => {
+      if (e.button === 2) return;
+      e.stopPropagation();
+      if (list.style.display === 'flex') closeDropdown(); else open();
+    });
+
+    dd.setValues = function (vals) { dd.values = vals; build(); display(); };
+    dd.setValue = function (val) {
+      if (dd.multi) {
+        const n = {};
+        for (const v of val) if (dd.values.includes(v)) n[v] = true;
+        dd.value = n;
+      } else {
+        dd.value = dd.values.includes(val) ? val : null;
+      }
+      build(); display();
+      dd.callback(dd.multi ? Object.keys(dd.value) : dd.value);
+    };
+    dd.getValue = () => dd.multi ? Object.keys(dd.value) : dd.value;
+
+    build();
+    display();
+
+    /* 初期値 */
+    if (info.default !== undefined) {
+      if (dd.multi && Array.isArray(info.default)) {
+        for (const v of info.default) if (dd.values.includes(v)) dd.value[v] = true;
+      } else if (!dd.multi && dd.values.includes(info.default)) {
+        dd.value = info.default;
+      }
+      build(); display();
+    }
+
+    Options[idx] = dd;
+    return dd;
+  }
+
+  /* ================= toggle ================= */
+  function createToggle(container, idx, info) {
+    const toggle = {
+      type: 'Toggle',
+      value: !!info.default,
+      callback: info.callback || (function () {}),
+      addons: [],
+    };
+
+    const row = h('div', 'row-toggle', container);
+    if (info.risky) row.classList.add('risky');
+    const box = h('div', 'toggle-box', row);
+    h('div', 'toggle-inner', box);
+    const label = h('div', 'toggle-label', row);
+    label.textContent = info.text || '';
+    const addons = h('div', 'addons', row);
+
+    attachTooltip(info.tooltip, row);
+
+    toggle.display = function () {
+      row.classList.toggle('on', toggle.value);
+    };
+
+    toggle.setValue = function (v) {
+      v = !!v;
+      if (toggle.value === v) {
+        // 値は同じでも Lua 版は callback を呼ぶ
+      }
+      toggle.value = v;
+      toggle.display();
+      for (const a of toggle.addons) {
+        if (a.type === 'KeyPicker' && a.syncToggleState) {
+          a.toggled = v;
+          a.update();
+        }
+      }
+      toggle.callback(v);
+      updateDependencyBoxes();
+    };
+
+    toggle.onChanged = function (fn) { toggle.callback = fn; fn(toggle.value); };
+
+    row.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      if (e.target.closest('.keypicker') || e.target.closest('.swatch')) return;
+      toggle.setValue(!toggle.value);
+    });
+
+    /* --- addons --- */
+    toggle.addKeyPicker = function (i, inf) {
+      const kp = createKeyPicker(toggle, addons, i, inf);
+      toggle.addons.push(kp);
+      return kp;
+    };
+    toggle.addColorPicker = function (i, inf) {
+      const cp = createColorPicker(addons, i, inf);
+      toggle.addons.push(cp);
+      return cp;
+    };
+
+    toggle.display();
+    Toggles[idx] = toggle;
+    return toggle;
+  }
+
+  /* ================= slider ================= */
+  function createSlider(container, idx, info) {
+    const slider = {
+      type: 'Slider',
+      value: info.default,
+      min: info.min,
+      max: info.max,
+      rounding: info.rounding,
+      callback: info.callback || (function () {}),
+    };
+
+    const wrap = h('div', 'slider', container);
+    if (!info.compact) {
+      const nm = h('div', 'slider-name', wrap);
+      nm.textContent = info.text || '';
+    }
+    const bar = h('div', 'slider-bar', wrap);
+    const track = h('div', 'slider-track', bar);
+    const fill = h('div', 'slider-fill', track);
+    const text = h('div', 'slider-text', track);
+
+    attachTooltip(info.tooltip, bar);
+
+    const round = v => {
+      if (!slider.rounding) return Math.floor(v);
+      const p = Math.pow(10, slider.rounding);
+      return Math.round(v * p) / p;
+    };
+
+    function display() {
+      const suffix = info.suffix || '';
+      if (info.compact) {
+        text.textContent = (info.text || '') + ': ' + slider.value + suffix;
+      } else if (info.hideMax) {
+        text.textContent = String(slider.value + suffix);
+      } else {
+        text.textContent = `${slider.value}${suffix}/${slider.max}${suffix}`;
+      }
+      const pct = (slider.value - slider.min) / (slider.max - slider.min);
+      fill.style.width = (pct * 100) + '%';
+    }
+
+    function setFromClientX(clientX) {
+      const r = track.getBoundingClientRect();
+      const pct = clamp((clientX - r.left) / r.width, 0, 1);
+      const val = round(slider.min + pct * (slider.max - slider.min));
+      if (val === slider.value) return;
+      slider.value = val;
+      display();
+      slider.callback(val);
+    }
+
+    track.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      startDrag(e, ev => setFromClientX(ev.clientX));
+    });
+
+    slider.setValue = function (v) {
+      const n = Number(v);
+      if (Number.isNaN(n)) return;
+      slider.value = clamp(n, slider.min, slider.max);
+      display();
+      slider.callback(slider.value);
+    };
+    slider.onChanged = function (fn) { slider.callback = fn; fn(slider.value); };
+    slider.getValue = () => slider.value;
+
+    display();
+    Options[idx] = slider;
+    return slider;
+  }
+
+  /* ================= button ================= */
+  function createButton(container, cfg) {
+    const btn = { text: cfg.text, func: cfg.func, doubleClick: !!cfg.doubleClick };
+
+    const outer = h('div', 'btn', container);
+    const innerEl = h('div', 'btn-inner', outer);
+    const label = h('span', '', innerEl);
+    label.textContent = btn.text;
+
+    attachTooltip(cfg.tooltip, outer);
+
+    let locked = false;
+
+    outer.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      if (locked) return;
+
+      if (btn.doubleClick) {
+        locked = true;
+        label.textContent = 'Are you sure?';
+        label.style.color = 'var(--accent)';
+        setTimeout(() => {
+          label.textContent = btn.text;
+          label.style.color = '';
+          locked = false;
+        }, 500);
+        // 0.5秒以内の2回目を待つ
+        const second = ev => {
+          if (ev.button !== 0) return;
+          if (locked) {
+            outer.removeEventListener('pointerdown', second, true);
+            label.textContent = btn.text;
+            label.style.color = '';
+            locked = false;
+            btn.func();
+          }
+        };
+        outer.addEventListener('pointerdown', second, true);
+        setTimeout(() => outer.removeEventListener('pointerdown', second, true), 520);
+        return;
+      }
+
+      btn.func();
+    });
+
+    btn.addTooltip = t => { attachTooltip(t, outer); return btn; };
+    btn.setLocked = v => { locked = v; };
+    return btn;
+  }
+
+  /* ================= input ================= */
+  function createInput(container, idx, info) {
+    const input = {
+      type: 'Input',
+      value: info.default || '',
+      numeric: !!info.numeric,
+      callback: info.callback || (function () {}),
+    };
+
+    const wrap = h('div', 'input-wrap', container);
+    const nm = h('div', 'input-name', wrap);
+    nm.textContent = info.text || '';
+
+    const box = h('div', 'input-box', wrap);
+    const innerEl = h('div', 'input-inner', box);
+    const el = h('input', '', innerEl);
+    el.spellcheck = false;
+    el.placeholder = info.placeholder || '';
+    el.value = input.value;
+
+    if (info.maxLength) el.maxLength = info.maxLength;
+    attachTooltip(info.tooltip, box);
+
+    function commit(v) {
+      if (input.numeric && v !== '' && isNaN(Number(v))) v = input.value;
+      if (info.maxLength && v.length > info.maxLength) v = v.slice(0, info.maxLength);
+      input.value = v;
+      el.value = v;
+      input.callback(v);
+    }
+
+    if (info.finished) {
+      el.addEventListener('blur', () => commit(el.value));
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
+    } else {
+      el.addEventListener('input', () => commit(el.value));
+    }
+
+    input.setValue = v => { input.value = v; el.value = v; input.callback(v); };
+    input.getValue = () => input.value;
+    input.onChanged = fn => { input.callback = fn; fn(input.value); };
+
+    Options[idx] = input;
+    return input;
+  }
+
+  /* ================= groupbox ================= */
+  function createGroupbox(column, name) {
+    const outer = h('div', 'groupbox', column);
+    const innerEl = h('div', 'groupbox-inner', outer);
+    h('div', 'groupbox-hl', innerEl);
+    const lbl = h('div', 'groupbox-label', innerEl);
+    lbl.textContent = name;
+    const content = h('div', 'groupbox-content', innerEl);
+
+    const gb = { container: content };
+
+    gb.addToggle = (idx, info) => createToggle(content, idx, info);
+    gb.addSlider = (idx, info) => createSlider(content, idx, info);
+    gb.addButton = (...args) => {
+      let cfg;
+      if (typeof args[0] === 'object') cfg = args[0];
+      else cfg = { text: args[0], func: args[1] };
+      if (typeof cfg.func !== 'function') cfg.func = function () {};
+      return createButton(content, cfg);
+    };
+    gb.addDropdown = (idx, info) => createDropdown(content, idx, info);
+    gb.addInput = (idx, info) => createInput(content, idx, info);
+
+    gb.addLabel = (text, wrap) => {
+      const el = h('div', 'lbl', content);
+      if (wrap) el.classList.add('wrap');
+      el.textContent = text;
+      return {
+        el,
+        setText: t => { el.textContent = t; },
+        addColorPicker: (idx, info) => createColorPicker(el, idx, info),
+      };
+    };
+
+    gb.addDivider = () => {
+      const d = h('div', 'divider', content);
+      h('div', 'divider-inner', d);
+    };
+
+    gb.addBlank = size => {
+      const b = h('div', 'blank', content);
+      b.style.height = size + 'px';
+    };
+
+    gb.addDependencyBox = () => {
+      const holder = h('div', '', content);
+      holder.style.cssText = 'display:none; flex-direction:column;';
+      const dep = { container: holder, deps: [] };
+
+      dep.setupDependencies = list => { dep.deps = list; dep.update(); };
+      dep.update = function () {
+        let ok = true;
+        for (const [elem, expected] of dep.deps) {
+          if (elem.type === 'Toggle' && elem.value !== expected) { ok = false; break; }
+        }
+        holder.style.display = ok ? 'flex' : 'none';
+      };
+      // グループボックス互換 API を生やす
+      for (const k of ['addToggle', 'addSlider', 'addButton', 'addDropdown', 'addInput', 'addLabel', 'addDivider', 'addBlank']) {
+        dep[k] = (...args) => {
+          const proxy = createGroupbox(holder, '');
+          proxy.el = proxy.container.parentElement.parentElement;
+          proxy.container.parentElement.parentElement.firstElementChild.nextElementSibling.remove(); // ラベル
+          proxy.container.parentElement.firstElementChild.remove(); // hl
+          proxy.container.parentElement.style.paddingTop = '0';
+          return gb[k] && (function () {
+            // holder 内に作るため、content を差し替える
+            const tmp = { };
+            return buildIn(holder, k, args);
+          })();
+        };
+      }
+
+      dependencyBoxes.push(dep);
+      return dep;
+    };
+
+    gb.el = outer;
+    return gb;
+  }
+
+
+  function buildIn(parent, kind, args) {
+    switch (kind) {
+      case 'addToggle':   return createToggle(parent, args[0], args[1]);
+      case 'addSlider':   return createSlider(parent, args[0], args[1]);
+      case 'addDropdown': return createDropdown(parent, args[0], args[1]);
+      case 'addInput':    return createInput(parent, args[0], args[1]);
+      case 'addButton': {
+        const cfg = typeof args[0] === 'object' ? args[0] : { text: args[0], func: args[1] };
+        return createButton(parent, cfg);
+      }
+      case 'addLabel': {
+        const el = h('div', 'lbl', parent);
+        if (args[1]) el.classList.add('wrap');
+        el.textContent = args[0];
+        return { el, setText: t => { el.textContent = t; } };
+      }
+      case 'addDivider': {
+        const d = h('div', 'divider', parent);
+        h('div', 'divider-inner', d);
+        return d;
+      }
+      case 'addBlank': {
+        const b = h('div', 'blank', parent);
+        b.style.height = (args[0] || 5) + 'px';
+        return b;
+      }
+    }
+  }
+
+  /* ================= window ================= */
+  function createWindow(config) {
+    config = config || {};
+    const title = config.title || 'No title';
+
+    const outer = h('div', 'win-outer', App);
+    const innerEl = h('div', 'win-inner', outer);
+
+    const titleBar = h('div', 'win-title', innerEl);
+    titleBar.textContent = title;
+
+    const main = h('div', 'main-section', innerEl);
+    const tabArea = h('div', 'tab-area', main);
+    const tabContainer = h('div', 'tab-container', main);
+
+    /* --- drag --- */
+    let dragging = false, offX = 0, offY = 0;
+    titleBar.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      dragging = true;
+      const r = outer.getBoundingClientRect();
+      offX = e.clientX - r.left;
+      offY = e.clientY - r.top;
+      titleBar.setPointerCapture(e.pointerId);
+    });
+    titleBar.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      outer.style.left = (e.clientX - offX) + 'px';
+      outer.style.top  = (e.clientY - offY) + 'px';
+    });
+    titleBar.addEventListener('pointerup', e => {
+      dragging = false;
+      try { titleBar.releasePointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    const win = { tabs: {}, el: outer };
+
+    win.setTitle = t => { titleBar.textContent = t; };
+
+    win.addTab = function (name) {
+      const btn = h('div', 'tab-btn', tabArea);
+      btn.textContent = name;
+
+      const frame = h('div', 'tab-frame', tabContainer);
+      const colL = h('div', 'col', frame);
+      const colR = h('div', 'col', frame);
+
+      const tab = { name };
+
+      tab.show = function () {
+        for (const key in win.tabs) win.tabs[key].hide();
+        btn.classList.add('active');
+        frame.classList.add('active');
+      };
+      tab.hide = function () {
+        btn.classList.remove('active');
+        frame.classList.remove('active');
+      };
+      tab.addLeftGroupbox  = n => createGroupbox(colL, n);
+      tab.addRightGroupbox = n => createGroupbox(colR, n);
+
+      btn.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
+        tab.show();
+      });
+
+      win.tabs[name] = tab;
+
+      const count = Object.keys(win.tabs).length;
+      if (count === 1) tab.show();
+
+      return tab;
+    };
+
+    win.show = () => { outer.style.opacity = '1'; outer.style.pointerEvents = 'auto'; };
+    win.hide = () => { outer.style.opacity = '0'; outer.style.pointerEvents = 'none'; };
+
+    return win;
+  }
+
+  /* ================= global input handling ================= */
+  function isTyping() {
+    const a = document.activeElement;
+    return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA');
+  }
+
+  window.addEventListener('keydown', e => {
+    /* menu open and close */
+    if (e.code === 'Insert' && !isTyping()) {
+      e.preventDefault();
+      menuVisible = !menuVisible;
+      const w = App.firstElementChild;
+      if (w) {
+        w.style.opacity = menuVisible ? '1' : '0';
+        w.style.pointerEvents = menuVisible ? 'auto' : 'none';
+      }
+      return;
+    }
+
+    /* key input wait */
+    if (activeKeyPicker) {
+      e.preventDefault();
+      const name = KEY_DISPLAY(e.code);
+      pressedKeys.add(name);
+      activeKeyPicker.bindKey ? null : null;
+      // bindKey in 
+      activeKeyPicker._bind && activeKeyPicker._bind(name);
+      return;
+    }
+
+    if (isTyping()) return;
+    if (e.repeat) return;
+
+    const name = KEY_DISPLAY(e.code);
+    pressedKeys.add(name);
+
+    for (const kp of keyPickers) kp.onKeyDown(name);
+    for (const kp of keyPickers) kp.update();
+    if (shownKeybindPanel) refreshKeybindPanel();
+  });
+
+  window.addEventListener('keyup', e => {
+    const name = KEY_DISPLAY(e.code);
+    pressedKeys.delete(name);
+    for (const kp of keyPickers) kp.update();
+    if (shownKeybindPanel) refreshKeybindPanel();
+  });
+
+  window.addEventListener('mousedown', e => {
+    /* menu out */
+    const insideMenu = e.target.closest('.win-outer');
+    if (!insideMenu && !isTyping()) {
+      const name = e.button === 0 ? 'MB1' : e.button === 2 ? 'MB2' : null;
+      if (name) {
+        pressedKeys.add(name);
+        for (const kp of keyPickers) kp.onKeyDown(name);
+        for (const kp of keyPickers) kp.update();
+      }
+    }
+
+    /* ポップアップ外クリックで閉じる */
+    if (!e.target.closest('.cp-popup') && !e.target.closest('.swatch')) closeColorPickerAll();
+    if (!e.target.closest('.dd-list') && !e.target.closest('.dropdown')) closeDropdown();
+    if (activeModeMenu && !e.target.closest('.kp-modes') && !e.target.closest('.keypicker')) {
+      activeModeMenu.style.display = 'none';
+      activeModeMenu = null;
+    }
+    if (activeKeyPicker && !e.target.closest('.keypicker')) {
+      activeKeyPicker._stop && activeKeyPicker._stop();
+    }
+  });
+
+  window.addEventListener('mouseup', e => {
+    const name = e.button === 0 ? 'MB1' : e.button === 2 ? 'MB2' : null;
+    if (name) {
+      pressedKeys.delete(name);
+      for (const kp of keyPickers) kp.update();
+      if (shownKeybindPanel) refreshKeybindPanel();
+    }
+  });
+
+  window.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* ================= export ================= */
+  return {
+    Toggles, Options,
+    createWindow, notify,
+    setWatermark, setWatermarkVisible,
+    setKeybindPanelVisible,
+    updateDependencyBoxes,
+    get keyPickers() { return keyPickers; },
+  };
+})();
+
+const Win = Library.createWindow({
+  title: 'My Menu Demo',
+  center: true,
+});
+
+/* ---------------- Main ---------------- */
+const mainTab = Win.addTab('Main');
+
+const playerBox = mainTab.addLeftGroupbox('Player');
+const moveBox   = mainTab.addRightGroupbox('Movement');
+
+/* Toggle (Risky = 赤文字) */
+playerBox.addToggle('GodMode', {
+  text: 'God Mode',
+  default: false,
+  risky: true,
+  tooltip: 'godmode a demo',
+  callback: v => {
+    Library.notify('GodMode: ' + (v ? 'ON' : 'OFF'), 2);
+  },
+});
+
+/* Toggle + KeyPicker (SyncToggleState) */
+const speedToggle = moveBox.addToggle('SpeedHack', {
+  text: 'Speed Hack',
+  default: false,
+  tooltip: 'change to walkspeed',
+  callback: v => console.log('SpeedHack:', v),
+});
+speedToggle.addKeyPicker('SpeedKey', {
+  default: 'KeyF',
+  text: 'Speed Toggle',
+  mode: 'Toggle',
+  syncToggleState: true,
+  callback: v => Library.notify('KeyPicker callback: ' + v, 2),
+});
+
+/* Slider */
+moveBox.addSlider('WalkSpeed', {
+  text: 'Walk Speed',
+  default: 16,
+  min: 16,
+  max: 200,
+  rounding: 0,
+  suffix: ' spd',
+  callback: v => console.log('WalkSpeed:', v),
+});
+
+moveBox.addSlider('JumpPower', {
+  text: 'Jump Power',
+  default: 50,
+  min: 0,
+  max: 200,
+  rounding: 0,
+  compact: true,
+  callback: v => console.log('JumpPower:', v),
+});
+
+/* ---------------- Visuals ---------------- */
+const visTab = Win.addTab('Visuals');
+const espBox = visTab.addLeftGroupbox('ESP');
+const miscBox = visTab.addRightGroupbox('Misc');
+
+/* Toggle + ColorPicker */
+const espToggle = espBox.addToggle('EspEnabled', {
+  text: 'Enable ESP',
+  default: false,
+  callback: v => Library.notify('ESP: ' + (v ? 'ON' : 'OFF'), 2),
+});
+espToggle.addColorPicker('EspColor', {
+  title: 'ESP Color',
+  default: '#FF3232',
+  transparency: 0,
+  callback: c => console.log('ESP color:', c.hex),
+});
+
+/* Slider */
+espBox.addSlider('EspRange', {
+  text: 'ESP Range',
+  default: 500,
+  min: 50,
+  max: 2000,
+  rounding: 0,
+  callback: v => console.log('Range:', v),
+});
+
+/* Dropdown (単一) */
+espBox.addDropdown('EspMode', {
+  text: 'ESP Mode',
+  values: ['None', 'Box', 'Name', 'All'],
+  default: 'None',
+  callback: v => Library.notify('ESP Mode: ' + (v || 'None'), 2),
+});
+
+/* Dropdown (複数選択) */
+miscBox.addDropdown('Targets', {
+  text: 'Targets',
+  values: ['Players', 'NPCs', 'Items', 'Objects'],
+  default: ['Players'],
+  multi: true,
+  callback: v => console.log('Targets:', v),
+});
+
+/* ラベル + カラーピッカー */
+const lbl = miscBox.addLabel('Team Color');
+lbl.addColorPicker('TeamColor', {
+  title: 'Team Color',
+  default: '#3BA7FF',
+  callback: c => console.log('team:', c.hex),
+});
+
+/* ---------------- Settings ---------------- */
+const setTab = Win.addTab('Settings');
+const configBox = setTab.addLeftGroupbox('Config');
+const infoBox   = setTab.addRightGroupbox('Info');
+
+/* Button */
+configBox.addButton({
+  text: 'Say Hello',
+  func: () => Library.notify('hello', 3),
+});
+
+configBox.addButton({
+  text: 'Reset Settings',
+  doubleClick: true,
+  tooltip: 'double click enable',
+  func: () => Library.notify('reset setting', 3),
+});
+
+/* Input */
+configBox.addInput('Webhook', {
+  text: 'Webhook URL',
+  default: '',
+  placeholder: 'https://discord.com/api/webhooks/...',
+  finished: true,
+  callback: v => console.log('webhook:', v),
+});
+
+configBox.addInput('Amount', {
+  text: 'Amount (numeric)',
+  default: '0',
+  numeric: true,
+  callback: v => console.log('amount:', v),
+});
+
+/* Divider / Label */
+infoBox.addLabel('it demo to linoria UI');
+infoBox.addLabel('Insert to open and close', true);
+infoBox.addDivider();
+
+/* DependencyBox */
+const showKbToggle = infoBox.addToggle('ShowKeybinds', {
+  text: 'Show Keybind Panel',
+  default: false,
+  callback: v => Library.setKeybindPanelVisible(v),
+});
+
+const dep = infoBox.addDependencyBox();
+dep.setupDependencies([[showKbToggle, true]]);
+dep.addLabel('↑ ON only open');
+dep.addSlider('DepSlider', {
+  text: 'Dep Slider',
+  default: 5,
+  min: 0,
+  max: 10,
+  rounding: 1,
+  callback: v => console.log('dep:', v),
+});
+dep.addButton({
+  text: 'Dep Button',
+  func: () => Library.notify('Dependency Box!', 2),
+});
+
+/* ---------------- Watermark / Notify ---------------- */
+Library.setWatermark('My Menu Demo  |  Insert a open and close');
+setTimeout(() => Library.notify('loaded menu', 4), 300);
+setTimeout(() => Library.notify('right click to color picker menu switch', 5), 900);
+</script>
+</body>
+</html>
