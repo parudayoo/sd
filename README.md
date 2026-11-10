@@ -17,7 +17,7 @@ it **Linoria based** simple ver.
 
 This is an old version
 
-Linoria maked an mspaint teams.
+Linoria maked to mspaint teams.
 
 > https://mspaint
 
