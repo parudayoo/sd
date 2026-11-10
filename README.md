@@ -9,7 +9,7 @@
 
 </div>
 
-> [!Warning]
+> [!Beta]
 > **Out of support.** Is this what you’re looking for? https://github.com/parudayoo/Obsidian-Lib-by-section
 
 # What Do?
