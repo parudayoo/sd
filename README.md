@@ -1,7 +1,6 @@
+<div align="center">
 
 <img width="594" height="634" alt="example" src="https://github.com/user-attachments/assets/e509f9fd-4b23-40e0-a51e-e72398358dde" />
-
-<div align="center">
 
 # Linoria-Lib ex by section
 **Simple and casual.**
