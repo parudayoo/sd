@@ -27,6 +27,6 @@ local linoria = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/r
 local section = "https://raw.githubusercontent.com/parudayoo/sd/refs/heads/main/"
 
 local Library = loadstring(game:HttpGet(section .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(linoria .. "ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(linoria .. "SaveManager.lua"))()
+local ThemeManager = loadstring(game:HttpGet(linoria .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(linoria .. "addons/SaveManager.lua"))()
 ```
