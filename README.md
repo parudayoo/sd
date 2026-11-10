@@ -1,7 +1,7 @@
+![Linoria-section.](https://net-crimson-yvz37eji.edgeone.dev/)
 <div align="center">
 
 # Linoria-Lib ex by section
-![Linoria-section.]()
 **Simple and casual.**
 
 [![Discord](https://img.shields.io/badge/discord-join-blue)](https://discord.gg/Tqy8uVkHCj)
