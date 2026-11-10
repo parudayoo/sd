@@ -14,6 +14,10 @@
 > [!Warning]
 > **Out of support.** Is this what you’re looking for? https://github.com/parudayoo/Obsidian-Lib-by-section
 
+## demo html!
+please look a site, html demo to linoria
+**https://parudayoo.github.io/sd/demo-ai.html**
+
 # What Do?
 it **Linoria based** simple ver.
 
